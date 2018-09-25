@@ -1,15 +1,16 @@
 package com.nstudio.keepalive;
 
 import android.app.AlarmManager;
-import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.support.v4.app.NotificationCompat;
+import androidx.core.app.NotificationCompat;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -29,9 +30,10 @@ public class KeepAliveService extends Service {
     public static final String ACTION_CLOSE = "com.nstudio.keepalive.action.CLOSE";
     public static final String ACTION_UPDATE = "com.nstudio.keepalive.action.UPDATE";
 
-    public static final String FILE = "http://www.paulnadler.com/nstudio/ping";
+    public static final String FILE = "https://www.graniteapps.net/ping";
 
     private static final int WAIT_TIME = 1000 * 60 * 1;
+    private static final String NOTE_CHANNEL_ID = "ongoing_note_channel";
 
     private PendingIntent stopIntent;
 
@@ -42,13 +44,26 @@ public class KeepAliveService extends Service {
         if (intent != null) {
             Log.d(TAG, "action - " + intent.getAction());
 
-            if (intent.getAction().equals(ACTION_START)) {
+            if (ACTION_START.equals(intent.getAction())) {
                 Intent closeIntent = new Intent(this, getClass());
                 closeIntent.setAction(ACTION_CLOSE);
                 stopIntent = PendingIntent.getService(this, NOTIFICATION_ID, closeIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT);
 
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    NotificationManager notificationManager =
+                            (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                    NotificationChannel notificationChannel = new NotificationChannel(
+                            NOTE_CHANNEL_ID,
+                            "KeepAlive Status",
+                            NotificationManager.IMPORTANCE_LOW);
+                    if (notificationManager != null) {
+                        notificationManager.createNotificationChannel(notificationChannel);
+                    }
+                }
+
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(
+                        this, NOTE_CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_stat_icon)
                         .setContentTitle("Keep Alive: Connecting...")
                         .setContentText("Press to close")
@@ -57,10 +72,10 @@ public class KeepAliveService extends Service {
 
                 startForeground(NOTIFICATION_ID, builder.build());
                 setAlarm(1000, intent);
-            } else if (intent.getAction().equals(ACTION_UPDATE)) {
+            } else if (ACTION_UPDATE.equals(intent.getAction())) {
                 download(intent);
                 setAlarm(WAIT_TIME, intent);
-            } else if (intent.getAction().equals(ACTION_CLOSE)) {
+            } else if (ACTION_CLOSE.equals(intent.getAction())) {
                 cancelAlarm(intent);
                 stopSelf();
             }
@@ -95,7 +110,8 @@ public class KeepAliveService extends Service {
                 else if (!text.contains(HASH))
                     status = "Restricted";
 
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(KeepAliveService.this)
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(
+                        KeepAliveService.this, NOTE_CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_stat_icon)
                         .setContentTitle("Keep Alive: " + status)
                         .setContentText("Press to close")
@@ -114,12 +130,12 @@ public class KeepAliveService extends Service {
             connection = (HttpURLConnection) new URL(webAddress).openConnection();
             connection.setConnectTimeout(1000 * 30);
             connection.setReadTimeout(1000 * 30);
-            BufferedReader br = null;
+            BufferedReader br;
             br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             StringBuilder html = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null)
-                html.append(line+"\n");
+                html.append(line).append("\n");
             br.close();
             connection.disconnect();
             Log.d(TAG, html.length() / 1024 + "K - HTTP:" + webAddress);

@@ -1,15 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 33
 
     defaultConfig {
         applicationId "com.nstudio.keepalive"
         minSdkVersion 14
-        targetSdkVersion 28
-        versionCode 140002
-        versionName "1.0.1"
+        targetSdkVersion 33
+        versionCode 140005
+        versionName "1.1.2"
     }
     buildTypes {
         release {
@@ -18,9 +17,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    namespace 'com.nstudio.keepalive'
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.core:core:1.0.0"
+    implementation "androidx.core:core:1.10.0"
 }
